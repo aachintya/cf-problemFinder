@@ -162,7 +162,14 @@ function App() {
         </div>
       </div>
       <footer className="mt-4 text-center">
-
+        <a
+          href="https://github.com/aachintya/cf-problemFinder"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="a-style"
+        >
+          GitHub
+        </a>
       </footer>
     </div>
   );
