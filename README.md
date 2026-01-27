@@ -8,37 +8,37 @@ The Codeforces Problem Finder is a web application built using React that allows
 
 ## Usage
 
-1. Visit the application [here](https://cf-problem-finder.vercel.app/).
+1. Visit the application [here](https://cf-problem.vercel.app/).
 
-2. Enter the Codeforces username of the user you want to search for.
+2. Enter the Target (Included) and Practice (Excluded) Codeforces usernames.
 
-3. Click the "Submit" button to retrieve the list of problems solved by the user.
+3. Click the "Find Problems" button.
 
-4. Problems are grouped by rating, making it easy to see which problems the user has solved at each rating level.
+4. The app will find problems solved by any of the target users that haven't been solved by any of the practice users, grouped by rating.
 
 ## Features
 
-- User-friendly interface for finding problems by rating.
-- Displays the user's first name and last name (if available).
-- Links to the Codeforces profiles of the users who solved the problems.
-- Modern and responsive design for an enhanced user experience.
+- **Multi-User Comparison:** Compare multiple handles simultaneously.
+- **Aggregate Logic:** Find the union of solved problems minus the union of excluded problems.
+- **Loading Indicators:** Real-time feedback while fetching data.
+- **Clean UI:** Badge-based handle management and responsive design.
 
 ## Tech Stack
 
 - React
 - Codeforces API
+- Bootstrap
 
 ## Deployment
 
-The Codeforces Problem Finder is deployed and accessible online. You can try it out by visiting the following link:
+The Codeforces Problem Finder is deployed and accessible online:
 
-- [Codeforces Problem Finder](https://cf-problem-finder.vercel.app/)
+- [Live Demo](https://cf-problem.vercel.app/)
 
-Feel free to explore the application and find problems solved by Codeforces users based on their ratings.
-
-## Author
+## Contributors
 
 - [Parth Johri](https://www.linkedin.com/in/parthjohri07)
+- [Aachintya](https://github.com/aachintya)
 
 ## License
 
