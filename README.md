@@ -20,6 +20,7 @@ The Codeforces Problem Finder is a web application built using React that allows
 
 - **Multi-User Comparison:** Compare multiple handles simultaneously.
 - **Aggregate Logic:** Find the union of solved problems minus the union of excluded problems.
+- **Revision Mode:** Spaced repetition feature that surfaces problems you solved longest ago, helping you revise old concepts. Supports optional min/max rating filters.
 - **Loading Indicators:** Real-time feedback while fetching data.
 - **Clean UI:** Badge-based handle management and responsive design.
 
