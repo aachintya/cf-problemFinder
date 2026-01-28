@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 import "./ProblemTable.css";
 
-function ProblemTable({ problems }) {
+function ProblemTable({ problems, showDaysSinceSolve = false }) {
   const groupedProblems = {};
 
-  problems.forEach(({ problemId, rating, name }) => {
+  problems.forEach(({ problemId, rating, name, daysSinceSolve }) => {
     if (!groupedProblems[rating]) {
       groupedProblems[rating] = [];
     }
-    groupedProblems[rating].push({ problemId, name });
+    groupedProblems[rating].push({ problemId, name, daysSinceSolve });
   });
 
   const [expandedRating, setExpandedRating] = useState(null);
@@ -32,26 +32,32 @@ function ProblemTable({ problems }) {
                 <h5 className="card-title">Rating: {rating}</h5>
                 <button
                   onClick={() => handleRatingClick(rating)}
-                  className={`btn btn-outline-dark ${
-                    expandedRating === rating ? "active" : ""
-                  }`}
+                  className={`btn btn-outline-dark ${expandedRating === rating ? "active" : ""
+                    }`}
                 >
                   {expandedRating === rating ? "Hide" : "Show"} Problems
                 </button>
                 {expandedRating === rating && (
                   <ul className="list-group mt-2">
-                    {groupedProblems[rating].map(({ problemId, name }) => (
-                      <li key={problemId} className="list-group-item">
-                        <a
-                          href={`https://codeforces.com/problemset/problem/${problemId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="custom-link"
-                        >
-                          {name}
-                        </a>
-                      </li>
-                    ))}
+                    {groupedProblems[rating].map(
+                      ({ problemId, name, daysSinceSolve }) => (
+                        <li key={problemId} className="list-group-item d-flex justify-content-between align-items-center">
+                          <a
+                            href={`https://codeforces.com/problemset/problem/${problemId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="custom-link"
+                          >
+                            {name}
+                          </a>
+                          {showDaysSinceSolve && daysSinceSolve !== undefined && (
+                            <span className="badge bg-secondary rounded-pill">
+                              {daysSinceSolve}d ago
+                            </span>
+                          )}
+                        </li>
+                      )
+                    )}
                   </ul>
                 )}
               </div>

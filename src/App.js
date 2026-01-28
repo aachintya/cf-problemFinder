@@ -1,13 +1,16 @@
 import React, { useState } from "react";
 import UserInput from "./components/UserInput";
+import RevisionMode from "./components/RevisionMode";
 import ProblemTable from "./components/ProblemTable";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./App.css";
 
 function App() {
+  const [mode, setMode] = useState("finder"); // "finder" or "revision"
   const [problems, setProblems] = useState([]);
   const [username, setUsername] = useState([]);
   const [practicer, setPracticer] = useState([]);
+  const [revisionUser, setRevisionUser] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,21 +21,18 @@ function App() {
     setPracticer(excludeHandles);
     setLoading(true);
 
-    // Fetch Status for all Include Handles
     const includeStatusPromises = includeHandles.map((handle) =>
       fetch(`https://codeforces.com/api/user.status?handle=${handle}`).then(
         (res) => res.json()
       )
     );
 
-    // Fetch Status for all Exclude Handles
     const excludeStatusPromises = excludeHandles.map((handle) =>
       fetch(`https://codeforces.com/api/user.status?handle=${handle}`).then(
         (res) => res.json()
       )
     );
 
-    // Fetch Info for the first Include handle (to keep the "Name" feature)
     if (includeHandles.length === 1) {
       fetch(`https://codeforces.com/api/user.info?handles=${includeHandles[0]}`)
         .then((response) => response.json())
@@ -57,7 +57,6 @@ function App() {
         const allExcludeOk = excludeResults.every((r) => r.status === "OK");
 
         if (allIncludeOk && allExcludeOk) {
-          // Aggregate problems solved by ANY Target user (Union)
           const includeSolvedMap = new Map();
           includeResults.forEach((res) => {
             const processed = processData(res.result);
@@ -68,7 +67,6 @@ function App() {
             });
           });
 
-          // Aggregate problem IDs solved by ANY Practicer user (Union)
           const excludeSolvedIds = new Set();
           excludeResults.forEach((res) => {
             const processed = processData(res.result);
@@ -77,7 +75,6 @@ function App() {
             });
           });
 
-          // Find problems solved by Target Union but NOT by Practicer Union
           const difference = Array.from(includeSolvedMap.values()).filter(
             (p) => !excludeSolvedIds.has(p.problemId)
           );
@@ -93,6 +90,69 @@ function App() {
             errorHandles.join(", ")
           );
         }
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
+
+  const handleRevisionSubmit = (handle, minRating, maxRating) => {
+    setProblems([]);
+    setRevisionUser(handle);
+    setLoading(true);
+
+    fetch(`https://codeforces.com/api/user.status?handle=${handle}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === "OK") {
+          const now = Date.now();
+          const processedProblems = data.result
+            .filter((sub) => sub.verdict === "OK")
+            .map((sub) => ({
+              problemId: `${sub.problem.contestId}/${sub.problem.index}`,
+              rating: sub.problem.rating || "Unrated",
+              name: sub.problem.name,
+              solveTime: sub.creationTimeSeconds * 1000,
+              daysSinceSolve: Math.floor(
+                (now - sub.creationTimeSeconds * 1000) / (1000 * 60 * 60 * 24)
+              ),
+            }));
+
+          // Keep only the oldest solve for each problem
+          const problemMap = new Map();
+          processedProblems.forEach((p) => {
+            if (
+              !problemMap.has(p.problemId) ||
+              p.solveTime < problemMap.get(p.problemId).solveTime
+            ) {
+              problemMap.set(p.problemId, p);
+            }
+          });
+
+          // Convert to array and apply rating filter
+          let uniqueProblems = Array.from(problemMap.values());
+
+          if (minRating !== null) {
+            uniqueProblems = uniqueProblems.filter(
+              (p) => p.rating !== "Unrated" && p.rating >= minRating
+            );
+          }
+          if (maxRating !== null) {
+            uniqueProblems = uniqueProblems.filter(
+              (p) => p.rating !== "Unrated" && p.rating <= maxRating
+            );
+          }
+
+          // Sort by days since solve (descending - oldest first)
+          uniqueProblems.sort((a, b) => b.daysSinceSolve - a.daysSinceSolve);
+
+          setProblems(uniqueProblems);
+        } else {
+          alert("Error fetching user data: " + (data.comment || "Unknown"));
+        }
+      })
+      .catch((err) => {
+        alert("Network error: " + err.message);
       })
       .finally(() => {
         setLoading(false);
@@ -125,20 +185,52 @@ function App() {
       <div className="row">
         <div className="col-md-12 text-center">
           <h1>Codeforces Problem Finder</h1>
+          <div className="btn-group mb-4" role="group">
+            <button
+              type="button"
+              className={`btn ${mode === "finder" ? "btn-primary" : "btn-outline-primary"
+                }`}
+              onClick={() => {
+                setMode("finder");
+                setProblems([]);
+              }}
+            >
+              Problem Finder
+            </button>
+            <button
+              type="button"
+              className={`btn ${mode === "revision" ? "btn-success" : "btn-outline-success"
+                }`}
+              onClick={() => {
+                setMode("revision");
+                setProblems([]);
+              }}
+            >
+              Revision Mode
+            </button>
+          </div>
         </div>
       </div>
       <div className="row container">
         <div className="col-md-15">
-          <UserInput
-            onUsernameSubmit={handleUsernameSubmit}
-            loading={loading}
-          />
+          {mode === "finder" && (
+            <UserInput
+              onUsernameSubmit={handleUsernameSubmit}
+              loading={loading}
+            />
+          )}
+          {mode === "revision" && (
+            <RevisionMode
+              onRevisionSubmit={handleRevisionSubmit}
+              loading={loading}
+            />
+          )}
           {loading && (
             <div className="spinner-container">
               <div className="loading-spinner"></div>
             </div>
           )}
-          {!loading && username.length > 0 && (
+          {!loading && mode === "finder" && username.length > 0 && (
             <div className="text-center mt-4">
               <h4>
                 Problems solved by{" "}
@@ -158,7 +250,20 @@ function App() {
               )}
             </div>
           )}
-          {problems.length > 0 && <ProblemTable problems={problems} />}
+          {!loading && mode === "revision" && revisionUser && (
+            <div className="text-center mt-4">
+              <h4>
+                Revision for{" "}
+                <span className="text-success">{revisionUser}</span>
+              </h4>
+              <p className="text-muted">
+                {problems.length} problems to revise (oldest solves first)
+              </p>
+            </div>
+          )}
+          {problems.length > 0 && (
+            <ProblemTable problems={problems} showDaysSinceSolve={mode === "revision"} />
+          )}
         </div>
       </div>
       <footer className="mt-4 text-center">
