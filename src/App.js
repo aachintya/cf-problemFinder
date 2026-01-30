@@ -118,13 +118,11 @@ function App() {
               ),
             }));
 
-          // Keep only the oldest solve for each problem
+          // Keep only the latest (most recent) solve for each problem
           const problemMap = new Map();
           processedProblems.forEach((p) => {
-            if (
-              !problemMap.has(p.problemId) ||
-              p.solveTime < problemMap.get(p.problemId).solveTime
-            ) {
+            const existing = problemMap.get(p.problemId);
+            if (!existing || p.solveTime > existing.solveTime) {
               problemMap.set(p.problemId, p);
             }
           });
@@ -262,7 +260,11 @@ function App() {
             </div>
           )}
           {problems.length > 0 && (
-            <ProblemTable problems={problems} showDaysSinceSolve={mode === "revision"} />
+            <ProblemTable
+              key={`${mode}-${problems.length}-${problems[0]?.problemId || ''}`}
+              problems={problems}
+              showDaysSinceSolve={mode === "revision"}
+            />
           )}
         </div>
       </div>
