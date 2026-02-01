@@ -1,13 +1,67 @@
 // UserInput.js
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./ProblemTable.css";
+
+const STORAGE_KEY = "cf-problem-finder-saved-requests";
 
 function UserInput({ onUsernameSubmit, loading }) {
   const [includeHandles, setIncludeHandles] = useState([]);
   const [excludeHandles, setExcludeHandles] = useState([]);
   const [includeInput, setIncludeInput] = useState("");
   const [excludeInput, setExcludeInput] = useState("");
+  const [savedRequests, setSavedRequests] = useState([]);
+  const [showSaved, setShowSaved] = useState(false);
+
+  // Load saved requests from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        setSavedRequests(JSON.parse(saved));
+      } catch (e) {
+        console.error("Error parsing saved requests:", e);
+      }
+    }
+  }, []);
+
+  // Save request to localStorage
+  const saveRequest = (includeList, excludeList) => {
+    const newRequest = {
+      id: Date.now(),
+      includeHandles: includeList,
+      excludeHandles: excludeList,
+      timestamp: new Date().toLocaleString(),
+    };
+
+    // Check if same request already exists
+    const exists = savedRequests.some(
+      (req) =>
+        JSON.stringify(req.includeHandles.sort()) === JSON.stringify(includeList.sort()) &&
+        JSON.stringify(req.excludeHandles.sort()) === JSON.stringify(excludeList.sort())
+    );
+
+    if (!exists) {
+      const updated = [newRequest, ...savedRequests].slice(0, 10); // Keep last 10
+      setSavedRequests(updated);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    }
+  };
+
+  // Load a saved request
+  const loadRequest = (request) => {
+    setIncludeHandles(request.includeHandles);
+    setExcludeHandles(request.excludeHandles);
+    setShowSaved(false);
+  };
+
+  // Delete a saved request
+  const deleteRequest = (id, e) => {
+    e.stopPropagation();
+    const updated = savedRequests.filter((req) => req.id !== id);
+    setSavedRequests(updated);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  };
 
   const addHandle = (type) => {
     if (loading) return;
@@ -34,6 +88,7 @@ function UserInput({ onUsernameSubmit, loading }) {
     e.preventDefault();
     if (loading) return;
     if (includeHandles.length > 0) {
+      saveRequest(includeHandles, excludeHandles);
       onUsernameSubmit(includeHandles, excludeHandles);
     } else {
       alert("There should be atleast 1 target user");
@@ -68,6 +123,56 @@ function UserInput({ onUsernameSubmit, loading }) {
     <div className="container-fluid">
       <div className="row justify-content-center">
         <div className="col-md-10">
+          {/* Saved Requests Section */}
+          {savedRequests.length > 0 && (
+            <div className="mb-3 position-relative">
+              <button
+                type="button"
+                className="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center"
+                onClick={() => setShowSaved(!showSaved)}
+                disabled={loading}
+              >
+                <span>📋 Previous Requests ({savedRequests.length})</span>
+                <span>{showSaved ? "▲" : "▼"}</span>
+              </button>
+              {showSaved && (
+                <div className="card position-absolute w-100 mt-1 shadow" style={{ zIndex: 1000, maxHeight: "300px", overflowY: "auto" }}>
+                  <ul className="list-group list-group-flush">
+                    {savedRequests.map((req) => (
+                      <li
+                        key={req.id}
+                        className="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                        style={{ cursor: "pointer" }}
+                        onClick={() => loadRequest(req)}
+                      >
+                        <div>
+                          <div>
+                            <span className="text-primary fw-bold">
+                              {req.includeHandles.join(", ")}
+                            </span>
+                            {req.excludeHandles.length > 0 && (
+                              <span className="text-muted">
+                                {" "}- {req.excludeHandles.join(", ")}
+                              </span>
+                            )}
+                          </div>
+                          <small className="text-muted">{req.timestamp}</small>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={(e) => deleteRequest(req.id, e)}
+                          title="Delete"
+                        >
+                          ✕
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="card shadow-sm p-4 mb-4">
             <div className="row g-4">
               <div className="col-md-6">
