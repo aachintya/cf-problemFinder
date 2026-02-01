@@ -15,6 +15,10 @@ function App() {
   const [lastName, setLastName] = useState("");
   const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState("recent"); // "recent", "rating", "contestId", "alphabetical"
+  const [allTags, setAllTags] = useState([]); // All unique tags from problems
+  const [selectedTags, setSelectedTags] = useState([]); // Selected tags for filtering
+  const [tagFilterMode, setTagFilterMode] = useState("any"); // "any" or "all"
+  const [groupBy, setGroupBy] = useState("rating"); // "rating" or "tag"
 
   const handleUsernameSubmit = (includeHandles, excludeHandles) => {
     setProblems([]);
@@ -80,6 +84,12 @@ function App() {
             (p) => !excludeSolvedIds.has(p.problemId)
           );
 
+          // Extract all unique tags
+          const tagsSet = new Set();
+          difference.forEach((p) => p.tags.forEach((t) => tagsSet.add(t)));
+          setAllTags(Array.from(tagsSet).sort());
+          setSelectedTags([]);
+
           setProblems(difference);
         } else {
           const errorHandles = [
@@ -113,6 +123,7 @@ function App() {
               problemId: `${sub.problem.contestId}/${sub.problem.index}`,
               rating: sub.problem.rating || "Unrated",
               name: sub.problem.name,
+              tags: sub.problem.tags || [],
               solveTime: sub.creationTimeSeconds * 1000,
               daysSinceSolve: Math.floor(
                 (now - sub.creationTimeSeconds * 1000) / (1000 * 60 * 60 * 24)
@@ -145,6 +156,12 @@ function App() {
           // Sort by days since solve (descending - oldest first)
           uniqueProblems.sort((a, b) => b.daysSinceSolve - a.daysSinceSolve);
 
+          // Extract all unique tags
+          const tagsSet = new Set();
+          uniqueProblems.forEach((p) => p.tags.forEach((t) => tagsSet.add(t)));
+          setAllTags(Array.from(tagsSet).sort());
+          setSelectedTags([]);
+
           setProblems(uniqueProblems);
         } else {
           alert("Error fetching user data: " + (data.comment || "Unknown"));
@@ -167,6 +184,7 @@ function App() {
         contestId: sub.problem.contestId,
         rating: sub.problem.rating || "Unrated",
         name: sub.problem.name,
+        tags: sub.problem.tags || [],
         solveTime: sub.creationTimeSeconds * 1000,
         daysSinceSolve: Math.floor(
           (now - sub.creationTimeSeconds * 1000) / (1000 * 60 * 60 * 24)
@@ -183,6 +201,26 @@ function App() {
     });
 
     return Array.from(problemMap.values());
+  };
+
+  const handleTagToggle = (tag) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
+
+  const getFilteredProblems = (problemList) => {
+    if (selectedTags.length === 0) {
+      return problemList;
+    }
+
+    return problemList.filter((problem) => {
+      if (tagFilterMode === "any") {
+        return selectedTags.some((tag) => problem.tags.includes(tag));
+      } else {
+        return selectedTags.every((tag) => problem.tags.includes(tag));
+      }
+    });
   };
 
   const getSortedProblems = (problemList) => {
@@ -215,6 +253,8 @@ function App() {
     }
     return sorted;
   };
+
+  const filteredProblems = getFilteredProblems(problems);
 
   return (
     <div className="container-fluid container">
@@ -339,6 +379,73 @@ function App() {
                   </div>
                 </div>
               )}
+              {/* Tag Filter Controls */}
+              {allTags.length > 0 && (
+                <div className="tag-filter-controls mt-3">
+                  <div className="d-flex flex-wrap justify-content-center gap-2 align-items-center mb-2">
+                    <span className="text-muted me-2">Filter Mode:</span>
+                    <div className="btn-group btn-group-sm" role="group">
+                      <button
+                        type="button"
+                        className={`btn ${tagFilterMode === "any" ? "btn-info" : "btn-outline-secondary"}`}
+                        onClick={() => setTagFilterMode("any")}
+                      >
+                        Any Tag
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn ${tagFilterMode === "all" ? "btn-info" : "btn-outline-secondary"}`}
+                        onClick={() => setTagFilterMode("all")}
+                      >
+                        All Tags
+                      </button>
+                    </div>
+                    <span className="text-muted ms-3 me-2">Group By:</span>
+                    <div className="btn-group btn-group-sm" role="group">
+                      <button
+                        type="button"
+                        className={`btn ${groupBy === "rating" ? "btn-warning" : "btn-outline-secondary"}`}
+                        onClick={() => setGroupBy("rating")}
+                      >
+                        Rating
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn ${groupBy === "tag" ? "btn-warning" : "btn-outline-secondary"}`}
+                        onClick={() => setGroupBy("tag")}
+                      >
+                        Topic
+                      </button>
+                    </div>
+                    {selectedTags.length > 0 && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger ms-2"
+                        onClick={() => setSelectedTags([])}
+                      >
+                        Clear Filters
+                      </button>
+                    )}
+                  </div>
+                  <div className="tag-badges d-flex flex-wrap justify-content-center gap-1 mt-2">
+                    {allTags.map((tag) => (
+                      <span
+                        key={tag}
+                        className={`badge tag-badge ${selectedTags.includes(tag) ? "bg-primary" : "bg-secondary"}`}
+                        style={{ cursor: "pointer" }}
+                        onClick={() => handleTagToggle(tag)}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                  {selectedTags.length > 0 && (
+                    <p className="text-muted mt-2 small">
+                      Showing {filteredProblems.length} of {problems.length} problems
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
           {!loading && mode === "revision" && revisionUser && (
@@ -348,15 +455,83 @@ function App() {
                 <span className="text-success">{revisionUser}</span>
               </h4>
               <p className="text-muted">
-                {problems.length} problems to revise (oldest solves first)
+                {filteredProblems.length} problems to revise (oldest solves first)
               </p>
+              {/* Tag Filter Controls for Revision Mode */}
+              {allTags.length > 0 && (
+                <div className="tag-filter-controls mt-3">
+                  <div className="d-flex flex-wrap justify-content-center gap-2 align-items-center mb-2">
+                    <span className="text-muted me-2">Filter Mode:</span>
+                    <div className="btn-group btn-group-sm" role="group">
+                      <button
+                        type="button"
+                        className={`btn ${tagFilterMode === "any" ? "btn-info" : "btn-outline-secondary"}`}
+                        onClick={() => setTagFilterMode("any")}
+                      >
+                        Any Tag
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn ${tagFilterMode === "all" ? "btn-info" : "btn-outline-secondary"}`}
+                        onClick={() => setTagFilterMode("all")}
+                      >
+                        All Tags
+                      </button>
+                    </div>
+                    <span className="text-muted ms-3 me-2">Group By:</span>
+                    <div className="btn-group btn-group-sm" role="group">
+                      <button
+                        type="button"
+                        className={`btn ${groupBy === "rating" ? "btn-warning" : "btn-outline-secondary"}`}
+                        onClick={() => setGroupBy("rating")}
+                      >
+                        Rating
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn ${groupBy === "tag" ? "btn-warning" : "btn-outline-secondary"}`}
+                        onClick={() => setGroupBy("tag")}
+                      >
+                        Topic
+                      </button>
+                    </div>
+                    {selectedTags.length > 0 && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger ms-2"
+                        onClick={() => setSelectedTags([])}
+                      >
+                        Clear Filters
+                      </button>
+                    )}
+                  </div>
+                  <div className="tag-badges d-flex flex-wrap justify-content-center gap-1 mt-2">
+                    {allTags.map((tag) => (
+                      <span
+                        key={tag}
+                        className={`badge tag-badge ${selectedTags.includes(tag) ? "bg-primary" : "bg-secondary"}`}
+                        style={{ cursor: "pointer" }}
+                        onClick={() => handleTagToggle(tag)}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                  {selectedTags.length > 0 && (
+                    <p className="text-muted mt-2 small">
+                      Showing {filteredProblems.length} of {problems.length} problems
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
-          {problems.length > 0 && (
+          {filteredProblems.length > 0 && (
             <ProblemTable
-              key={`${mode}-${sortBy}-${problems.length}-${problems[0]?.problemId || ''}`}
-              problems={getSortedProblems(problems)}
+              key={`${mode}-${sortBy}-${groupBy}-${filteredProblems.length}-${filteredProblems[0]?.problemId || ''}-${selectedTags.join(',')}`}
+              problems={getSortedProblems(filteredProblems)}
               showDaysSinceSolve={mode === "revision"}
+              groupBy={groupBy}
             />
           )}
         </div>
