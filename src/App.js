@@ -14,6 +14,7 @@ function App() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sortBy, setSortBy] = useState("recent"); // "recent", "rating", "contestId", "alphabetical"
 
   const handleUsernameSubmit = (includeHandles, excludeHandles) => {
     setProblems([]);
@@ -158,24 +159,61 @@ function App() {
   };
 
   const processData = (resultArr) => {
+    const now = Date.now();
     const processedProblems = resultArr
       .filter((sub) => sub.verdict === "OK")
       .map((sub) => ({
         problemId: `${sub.problem.contestId}/${sub.problem.index}`,
+        contestId: sub.problem.contestId,
         rating: sub.problem.rating || "Unrated",
         name: sub.problem.name,
+        solveTime: sub.creationTimeSeconds * 1000,
+        daysSinceSolve: Math.floor(
+          (now - sub.creationTimeSeconds * 1000) / (1000 * 60 * 60 * 24)
+        ),
       }));
 
-    const uniqueProblemIds = new Set();
-    const uniqueProcessedProblems = processedProblems.filter((problem) => {
-      if (!uniqueProblemIds.has(problem.problemId)) {
-        uniqueProblemIds.add(problem.problemId);
-        return true;
+    // Keep only the most recent solve for each problem
+    const problemMap = new Map();
+    processedProblems.forEach((problem) => {
+      const existing = problemMap.get(problem.problemId);
+      if (!existing || problem.solveTime > existing.solveTime) {
+        problemMap.set(problem.problemId, problem);
       }
-      return false;
     });
 
-    return uniqueProcessedProblems;
+    return Array.from(problemMap.values());
+  };
+
+  const getSortedProblems = (problemList) => {
+    if (mode === "revision") {
+      return problemList; // Revision mode has its own sorting
+    }
+
+    const sorted = [...problemList];
+    switch (sortBy) {
+      case "recent":
+        sorted.sort((a, b) => b.solveTime - a.solveTime);
+        break;
+      case "oldest":
+        sorted.sort((a, b) => a.solveTime - b.solveTime);
+        break;
+      case "contestId":
+        sorted.sort((a, b) => b.contestId - a.contestId);
+        break;
+      case "contestIdAsc":
+        sorted.sort((a, b) => a.contestId - b.contestId);
+        break;
+      case "alphabetical":
+        sorted.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case "alphabeticalDesc":
+        sorted.sort((a, b) => b.name.localeCompare(a.name));
+        break;
+      default:
+        break;
+    }
+    return sorted;
   };
 
   return (
@@ -246,6 +284,61 @@ function App() {
                   Target: {firstName} {lastName}
                 </p>
               )}
+              {problems.length > 0 && (
+                <div className="sort-controls mt-3">
+                  <div className="d-flex flex-wrap justify-content-center gap-2 align-items-center">
+                    <span className="text-muted me-2">Sort:</span>
+                    <div className="btn-group btn-group-sm" role="group">
+                      <button
+                        type="button"
+                        className={`btn ${sortBy === "recent" ? "btn-primary" : "btn-outline-secondary"}`}
+                        onClick={() => setSortBy("recent")}
+                      >
+                        Newest ↓
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn ${sortBy === "oldest" ? "btn-primary" : "btn-outline-secondary"}`}
+                        onClick={() => setSortBy("oldest")}
+                      >
+                        Oldest ↑
+                      </button>
+                    </div>
+                    <div className="btn-group btn-group-sm" role="group">
+                      <button
+                        type="button"
+                        className={`btn ${sortBy === "alphabetical" ? "btn-primary" : "btn-outline-secondary"}`}
+                        onClick={() => setSortBy("alphabetical")}
+                      >
+                        A-Z
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn ${sortBy === "alphabeticalDesc" ? "btn-primary" : "btn-outline-secondary"}`}
+                        onClick={() => setSortBy("alphabeticalDesc")}
+                      >
+                        Z-A
+                      </button>
+                    </div>
+                    <div className="btn-group btn-group-sm" role="group">
+                      <button
+                        type="button"
+                        className={`btn ${sortBy === "contestId" ? "btn-primary" : "btn-outline-secondary"}`}
+                        onClick={() => setSortBy("contestId")}
+                      >
+                        Contest ↓
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn ${sortBy === "contestIdAsc" ? "btn-primary" : "btn-outline-secondary"}`}
+                        onClick={() => setSortBy("contestIdAsc")}
+                      >
+                        Contest ↑
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           {!loading && mode === "revision" && revisionUser && (
@@ -261,8 +354,8 @@ function App() {
           )}
           {problems.length > 0 && (
             <ProblemTable
-              key={`${mode}-${problems.length}-${problems[0]?.problemId || ''}`}
-              problems={problems}
+              key={`${mode}-${sortBy}-${problems.length}-${problems[0]?.problemId || ''}`}
+              problems={getSortedProblems(problems)}
               showDaysSinceSolve={mode === "revision"}
             />
           )}
