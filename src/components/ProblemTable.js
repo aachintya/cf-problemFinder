@@ -35,6 +35,7 @@ function ProblemTable({ problems, showDaysSinceSolve = false, groupBy = "rating"
   }
 
   const [expandedGroup, setExpandedGroup] = useState(null);
+  const [hideTags, setHideTags] = useState(false);
 
   const handleGroupClick = (group) => {
     if (expandedGroup === group) {
@@ -61,7 +62,15 @@ function ProblemTable({ problems, showDaysSinceSolve = false, groupBy = "rating"
 
   return (
     <div className="container-fluid">
-      <h2>Problems by {groupBy === "rating" ? "Rating" : "Topic"}</h2>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h2 className="mb-0">Problems by {groupBy === "rating" ? "Rating" : "Topic"}</h2>
+        <button
+          className={`btn btn-sm ${hideTags ? "btn-outline-secondary" : "btn-secondary"}`}
+          onClick={() => setHideTags(!hideTags)}
+        >
+          {hideTags ? "Show Tags" : "Hide Tags"}
+        </button>
+      </div>
       <div className="row">
         {sortedGroups.map((group) => (
           <div key={group} className="col-md-4">
@@ -103,7 +112,7 @@ function ProblemTable({ problems, showDaysSinceSolve = false, groupBy = "rating"
                               )}
                             </div>
                           </div>
-                          {tags && tags.length > 0 && (
+                          {!hideTags && tags && tags.length > 0 && (
                             <div className="problem-tags mt-1">
                               {tags.map((tag) => (
                                 <span key={tag} className="badge bg-dark tag-small me-1">
