@@ -45,6 +45,15 @@ function ProblemTable({ problems, showDaysSinceSolve = false, groupBy = "rating"
     }
   };
 
+  const handlePickRandom = (group) => {
+    const groupProblems = groupedProblems[group];
+    if (groupProblems && groupProblems.length > 0) {
+      const randomIndex = Math.floor(Math.random() * groupProblems.length);
+      const randomProblem = groupProblems[randomIndex];
+      window.open(`https://codeforces.com/problemset/problem/${randomProblem.problemId}`, "_blank");
+    }
+  };
+
   // Sort the groups
   const sortedGroups = Object.keys(groupedProblems).sort((a, b) => {
     if (groupBy === "rating") {
@@ -80,13 +89,21 @@ function ProblemTable({ problems, showDaysSinceSolve = false, groupBy = "rating"
                   {groupBy === "rating" ? `Rating: ${group}` : group}
                   <span className="badge bg-secondary ms-2">{groupedProblems[group].length}</span>
                 </h5>
-                <button
-                  onClick={() => handleGroupClick(group)}
-                  className={`btn btn-outline-dark ${expandedGroup === group ? "active" : ""
-                    }`}
-                >
-                  {expandedGroup === group ? "Hide" : "Show"} Problems
-                </button>
+                <div className="d-flex gap-2">
+                  <button
+                    onClick={() => handleGroupClick(group)}
+                    className={`btn btn-outline-dark ${expandedGroup === group ? "active" : ""
+                      }`}
+                  >
+                    {expandedGroup === group ? "Hide" : "Show"} Problems
+                  </button>
+                  <button
+                    onClick={() => handlePickRandom(group)}
+                    className="btn btn-outline-primary"
+                  >
+                    Pick Random 🎲
+                  </button>
+                </div>
                 {expandedGroup === group && (
                   <ul className="list-group mt-2">
                     {groupedProblems[group].map(
